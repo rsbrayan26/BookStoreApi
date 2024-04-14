@@ -7,6 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<BookStoreDatabaseSettings>(
     builder.Configuration.GetSection("BookStoreDatabase"));
 builder.Services.AddSingleton<BooksService>();
+builder.Services.AddSingleton<IMongoDbContext, MongoDbContext>(); //v2
+
 
 
 builder.Services.AddControllers();
