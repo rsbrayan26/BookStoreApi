@@ -1,4 +1,5 @@
-﻿using BookStoreApi.Models;
+﻿using System.Linq;
+using BookStoreApi.Models;
 using BookStoreApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -20,33 +21,48 @@ namespace BookStoreApi.Controllers
             _mongoDbContext = mongoDbContext;
         }
         // GET: api/<AuthorsController>
-        [HttpGet("")]
-        public async Task<IActionResult> Get()
+        [HttpGet]
+        public async Task<IActionResult> Get(int page=1,string? search=null)
         {
-            var page = Convert.ToInt32( HttpContext.Request.Query["page"])|1;
-            var autors =_mongoDbContext.Authors.Find(x=>true).ToListAsync();
-            List <Author> res = autors.Result;
+            var authors =_mongoDbContext.Authors.Find(x=>true).ToListAsync();
+            List <Author> res = authors.Result;
+            if (search!=null)
+            {
+                res = res.FindAll(x=> x.nameAuthor.Contains(search) || x.idNumber.Contains(search));
+                Console.WriteLine(search);
+            }
             //var parge = HttpContext.Request.Headers["parge"];
             //page = page[0].;
-            var itemsPerPage = 5.0;
-            var startData = (page - 1) * itemsPerPage;
-            var endData = startData + itemsPerPage;
-            var total = res.Count();
-            var total_pages = total / itemsPerPage;
-            total_pages = Math.Ceiling(total_pages);
+            int itemsPerPage = 5;
+            int total = res.Count();
+            var total_pages = Math.Ceiling(Convert.ToDecimal(total) / Convert.ToDecimal(itemsPerPage));
+            int startData = Convert.ToInt32((page - 1) * itemsPerPage);
+            int endData = (startData + itemsPerPage < total) ? itemsPerPage : (total-(page-1) * itemsPerPage);
+            var data = res.GetRange(startData, endData);
             return Ok(new {
-                //startData,endData,
                 page, 
                 itemsPerPage,
                 total,total_pages,
-                data= res.Skip(Convert.ToInt32 (startData)).Take(Convert.ToInt32(endData)).ToArray()
-                //,autors
+                data
             });
         }
 
-        // GET api/<AuthorsController>/5
-        //[HttpGet("{id}")]
-        //public string Get(int id)        {        }
+        //GET api/<AuthorsController>/5
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetId(string id)
+        {
+            try
+            {
+                var author = await _mongoDbContext.Authors.Find(x => x.Id == id).FirstOrDefaultAsync();
+                if (author == null) return Ok(new { Message= "No se encontró el autor" });
+                return Ok(new { author });
+        
+            }
+            catch (Exception ex) {
+                return BadRequest(new { ex.Message });
+            }
+            
+        }
 
         // POST api/<AuthorsController>
         [HttpPost]
